@@ -3,6 +3,8 @@ library(shiny)
 library(bslib)
 library(tidyverse)
 library(plotly)
+library(GGally)
+library(network)
 
 # Data ----
 load(url("https://raw.githubusercontent.com/ydkristanto/bib-math-educ/main/datasets/bib_data_simple.RData"))
@@ -38,8 +40,8 @@ ui <- page_navbar(
             "Authors",
             "Citations count",
             "Words",
-            "Co-occurence network",
-            "Collaboration network"
+            "Co-occurrence network",
+            "Co-authors network"
           ),
           selected = "Authors"
         )
@@ -107,6 +109,16 @@ ui <- page_navbar(
           trigger = icon("gear"),
           title = "Pengaturan Plot",
           conditionalPanel(
+            "input.analysis == 'Authors' | input.analysis == 'Citations count'",
+            numericInput(
+              "author_count",
+              div("Number of authors:", style = "font-weight: bold;"),
+              value = 10,
+              min = 2,
+              max = 20
+            )
+          ),
+          conditionalPanel(
             "input.analysis == 'Words'",
             selectInput(
               "field_words",
@@ -121,16 +133,92 @@ ui <- page_navbar(
               selected = "Bar chart"
             )
           ),
+          conditionalPanel(
+            "input.analysis == 'Co-occurrence network' | input.analysis == 'Co-authors network'",
+            numericInput(
+              "node_count",
+              div("Number of nodes:", style = "font-weight: bold;"),
+              value = 100,
+              min = 1,
+              max = 200
+            ),
+            numericInput(
+              "node_labelled",
+              div("Number of labelled nodes:", style = "font-weight: bold;"),
+              value = 10,
+              min = 1,
+              max = 20
+            )
+          ),
           placement = "left"
         ),
         class = "d-flex justify-content-between"
       ),
       plotlyOutput("plot"),
       card_footer(
-        "Source: Web of Science Database"
+        "Source: Web of Science Database",
+        class = "fs-10"
       ),
       full_screen = TRUE
     )
+  ),
+  ## Information ----
+  nav_panel(
+    "Information",
+    layout_column_wrap(
+      width = 1 / 2,
+      navset_card_underline(
+        ### About ----
+        nav_panel(
+          title = "About",
+          p("This web-based application allows you to conduct bibliometric analysis in the field of mathematics education. Through this application, for example, you can identify prolific and relevant authors. Additionally, you can also identify research trends in the field of mathematics education.")
+        ),
+        nav_panel(
+          ### Tools ----
+          title = "Tools",
+          p("This dashboard was developed using the R programming language and the Shiny package. The shinylive package was utilized to export this application so it can be run in a web browser without a separate R server. The dashboard layout is structured using bslib. All statistical charts in this dashboard are created using the ggplot2, GGally, and plotly packages.")
+        ),
+        nav_panel(
+          ### Developer ----
+          title = "Pengembang",
+          p("The developer and maintainer of this application is ", a("Yosep Dwi Kristanto,", href = "https://people.usd.ac.id/~ydkristanto", target = "_blank"), " a lecturer and researcher in ", a("the Mathematics Education department", href = "https://usd.ac.id/s1pmat", target = "_blank"), " at ", a("Sanata Dharma University,", href = "https://www.usd.ac.id/", target = "_blank"), " Yogyakarta, Indonesia.")
+        ),
+        nav_panel(
+          ### Source Code ----
+          title = "Source Code",
+          p("The source code of this application is available on ", a("GitHub repository.", href = "https://github.com/ydkristanto/bib-math-educ", target = "_blank"), " If you would like to report any issues or request additional features for this application, please ", a("create an issue", href = "https://github.com/ydkristanto/bib-math-educ/issues", target = "_blank"), " or, even better, submit a pull request in the repository.")
+        )
+      ),
+      ### Data ----
+      card(
+        card_header("Data"),
+        card_body(
+          p("The bibliographic data used in this application was obtained from the Web of Science database. The data was downloaded on 15 April 2024. It contains bibliographic information from scientific articles published in the following journals."),
+          tags$ul(
+            tags$li("Educational Studies in Mathematics"),
+            tags$li("ZDM - Mathematics Education"),
+            tags$li("Journal for Research in Mathematics Education"),
+            tags$li("International Journal of Science and Mathematics Education"),
+            tags$li("Journal of Mathematics Teacher Education"),
+            tags$li("Mathematical Thinking and Learning"),
+            tags$li("Enseñanza de las Ciencias"),
+            tags$li("Revista Latinoamericana de Investigación en Matemática Educativa - RELIME"),
+            tags$li("Eurasia Journal of Mathematics Science and Technology Education"),
+            tags$li("
+Bolema - Mathematics Education Bulletin")
+          )
+        )
+      )
+    )
+  ),
+  nav_spacer(),
+  ## Nav menu ----
+  nav_menu(
+    title = "Links",
+    nav_item(others_link),
+    nav_item(github_link),
+    icon = shiny::icon("link"),
+    align = "right"
   )
 )
 
@@ -192,6 +280,9 @@ server <- function(input, output, session) {
   ## plot ----
   output$plot <- renderPlotly({
     analysis_input <- input$analysis
+    author_count <- input$author_count
+    node_count <- input$node_count
+    node_labelled <- input$node_labelled
     
     if(analysis_input == "Authors") {
       data <- bib_data()$authors %>%
@@ -201,7 +292,7 @@ server <- function(input, output, session) {
         as_tibble() %>%
         arrange(-n) %>%
         filter(str_detect(., "ANONYMOUS", negate = TRUE)) %>% 
-        head(10)
+        head(author_count)
       names(data)[1] <- "author"
       plot0 <- data %>% 
         mutate(author = fct_reorder(author, n)) %>%
@@ -218,7 +309,7 @@ server <- function(input, output, session) {
         group_by(authors) %>% 
         summarise(citation = sum(times_cited)) %>% 
         arrange(-citation) %>% 
-        head(10)
+        head(author_count)
       plot0 <- data %>% 
         mutate(authors = fct_reorder(authors, citation)) %>%
         ggplot(aes(x = authors, y = citation)) +
@@ -393,22 +484,214 @@ server <- function(input, output, session) {
         theme(legend.position = "bottom") +
         labs(x = "Year", y = "Count")
       plot <- ggplotly(plot0)
-    } else if(input$analysis == "Co-occurence network") {
-      data <- bib_data()$author_keywords %>%
+    } else if(input$analysis == "Co-occurrence network") {
+      # Data preparation
+      bib_data <- bib_data()$author_keywords %>%
         str_split("; ") %>%
         lapply(function(x) {
           expand.grid(x, x, w = 1 / length(x), stringsAsFactors = FALSE)
         }) %>%
         bind_rows() %>% 
         as_tibble()
-      data <- apply(data[, -3], 1, str_sort()) %>%
+      
+      # Sorting bib_data
+      bib_data <- apply(bib_data[, -3], 1, str_sort) %>%
         t() %>%
         data.frame(stringsAsFactors = FALSE) %>%
-        mutate(w = data$w)
-      data <- data %>% 
-        group_by(Var1, Var2) %>%
-        summarise(w = sum(w)) %>%
-        filter(Var1 != Var2)
+        mutate(w = bib_data$w) %>% 
+        as_tibble()
+      
+      # Simplifying bib_data
+      bib_data <- bib_data %>% 
+        group_by(X1, X2) %>%
+        summarise(w = sum(w), .groups = "drop") %>%
+        filter(X1 != X2) %>% 
+        distinct() %>% 
+        rename(
+          from = X1,
+          to = X2,
+          weight = w
+        )
+      
+      # Filter
+      top_keywords <- bib_data() %>% 
+        select(author_keywords) %>% 
+        separate_longer_delim(
+          cols = author_keywords, delim = "; "
+        ) %>% 
+        group_by(author_keywords) %>% 
+        summarise(n = n()) %>% 
+        filter(!is.na(author_keywords)) %>% 
+        arrange(-n) %>% 
+        head(node_count)
+      
+      # Apply filter
+      bib_data <- bib_data %>% 
+        filter(
+          from %in% top_keywords$author_keywords,
+          to %in% top_keywords$author_keywords
+        ) %>% 
+        mutate(
+          from = tolower(from),
+          to = tolower(to)
+        )
+      
+      # Creating network objects
+      node_list <- top_keywords %>% 
+        rowid_to_column("id") %>% 
+        rename(
+          label = author_keywords,
+          occurrence = n
+        ) %>% 
+        mutate(
+          label = tolower(label),
+          label_w = ifelse(id <= node_labelled, label, NA)
+        )
+      
+      edge_list <- left_join(
+        bib_data, node_list, by = c("from" = "label")
+      ) %>% 
+        select(-from, -occurrence, -label_w) %>% 
+        rename(from = id)
+      
+      edge_list <- edge_list %>% 
+        left_join(node_list, by = c("to" = "label")) %>% 
+        select(-to, -occurrence, -label_w) %>% 
+        rename(to = id)
+      
+      edge_list <- edge_list %>% 
+        select(from, to, weight)
+      
+      # Creating network objects
+      bib_network <- network(
+        edge_list,
+        vertex.attr = node_list,
+        directed = FALSE,
+        matrix.type = "edgelist",
+        ignore.eval = FALSE
+      )
+      
+      # Network visualization
+      plot0 <- ggnet2(
+        bib_network,
+        node.size = "occurrence",
+        node.color = "label",
+        label = "label_w",
+        edge.size = "weight",
+        edge.color = "gray",
+        edge.alpha = .1
+      )
+      
+      plot <- ggplotly(
+        plot0,
+        tooltip = c("color", "size"),
+        legend = "none"
+      ) %>% 
+        style(showlegend = FALSE)
+    } else if(input$analysis == "Co-authors network") {
+      # Data preparation
+      bib_data <- bib_data()$authors %>%
+        str_split(";") %>%
+        lapply(function(x) {
+          expand.grid(x, x, w = 1 / length(x), stringsAsFactors = FALSE)
+        }) %>%
+        bind_rows() %>% 
+        as_tibble()
+      
+      # Sorting bib_data
+      bib_data <- apply(bib_data[, -3], 1, str_sort) %>%
+        t() %>%
+        data.frame(stringsAsFactors = FALSE) %>%
+        mutate(w = bib_data$w) %>% 
+        as_tibble()
+      
+      # Simplifying bib_data
+      bib_data <- bib_data %>% 
+        group_by(X1, X2) %>%
+        summarise(w = sum(w), .groups = "drop") %>%
+        filter(X1 != X2) %>% 
+        distinct() %>% 
+        rename(
+          from = X1,
+          to = X2,
+          weight = w
+        )
+      
+      # Filter
+      top_authors <- bib_data() %>% 
+        select(authors) %>% 
+        separate_longer_delim(
+          cols = authors, delim = ";"
+        ) %>% 
+        group_by(authors) %>% 
+        summarise(n = n()) %>% 
+        filter(!is.na(authors)) %>% 
+        arrange(-n) %>% 
+        head(node_count)
+      
+      # Apply filter
+      bib_data <- bib_data %>% 
+        filter(
+          from %in% top_authors$authors,
+          to %in% top_authors$authors
+        ) %>% 
+        mutate(
+          from = tolower(from),
+          to = tolower(to)
+        )
+      
+      # Creating network objects
+      node_list <- top_authors %>% 
+        rowid_to_column("id") %>% 
+        rename(
+          label = authors,
+          occurrence = n
+        ) %>% 
+        mutate(
+          label = tolower(label),
+          label_w = ifelse(id <= node_labelled, label, NA)
+        )
+      
+      edge_list <- left_join(
+        bib_data, node_list, by = c("from" = "label")
+      ) %>% 
+        select(-from, -occurrence, -label_w) %>% 
+        rename(from = id)
+      
+      edge_list <- edge_list %>% 
+        left_join(node_list, by = c("to" = "label")) %>% 
+        select(-to, -occurrence, -label_w) %>% 
+        rename(to = id)
+      
+      edge_list <- edge_list %>% 
+        select(from, to, weight)
+      
+      # Creating network objects
+      bib_network <- network(
+        edge_list,
+        vertex.attr = node_list,
+        directed = FALSE,
+        matrix.type = "edgelist",
+        ignore.eval = FALSE
+      )
+      
+      # Network visualization
+      plot0 <- ggnet2(
+        bib_network,
+        node.size = "occurrence",
+        node.color = "label",
+        label = "label_w",
+        edge.size = "weight",
+        edge.color = "gray",
+        edge.alpha = .1
+      )
+      
+      plot <- ggplotly(
+        plot0,
+        tooltip = c("color", "size"),
+        legend = "none"
+      ) %>% 
+        style(showlegend = FALSE)
     }
     
     plot
