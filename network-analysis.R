@@ -3,6 +3,7 @@ library(plotly)
 library(GGally)
 library(network)
 library(tidyverse)
+library(linkcomm)
 
 # Data ----
 load(url("https://raw.githubusercontent.com/ydkristanto/bib-math-educ/main/datasets/bib_data_simple.RData"))
@@ -60,6 +61,17 @@ bib_data <- bib_data %>%
     to = tolower(to)
   )
 
+# Detecting communities
+comm <- getLinkCommunities(
+  network = data.frame(bib_data),
+  hcmethod = "single",
+  directed = FALSE,
+  plot = FALSE,
+  verbose = FALSE
+)
+node_clusters <- comm$nodeclusters %>% 
+  as_tibble()
+
 # Creating network objects ----
 ## Node list ----
 node_list <- top_keywords %>% 
@@ -71,6 +83,9 @@ node_list <- top_keywords %>%
   mutate(
     label = tolower(label),
     label_w = ifelse(id <= 10, label, NA)
+  ) %>% 
+  left_join(
+    node_clusters, by = c("label" = "node")
   )
 
 ## Edge list ----
@@ -101,7 +116,7 @@ bib_network <- network(
 plot0 <- ggnet2(
   bib_network,
   node.size = "occurrence",
-  node.color = "label",
+  node.color = "cluster",
   label = "label_w",
   edge.size = "weight",
   edge.color = "gray",

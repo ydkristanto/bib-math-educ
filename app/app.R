@@ -3,6 +3,7 @@ library(shiny)
 library(bslib)
 library(tidyverse)
 library(plotly)
+library(sna)
 library(GGally)
 library(network)
 
@@ -156,11 +157,23 @@ ui <- page_navbar(
       ),
       plotlyOutput("plot"),
       card_footer(
-        "Source: Web of Science Database",
-        class = "fs-10"
+        div(
+          "Source: ",
+          tags$span(
+            a(
+              "Web of Science Database",
+              href = "https://www.webofscience.com/wos",
+              target = "_blank"
+            ),
+            style = "font-weight: bold;"
+          ),
+          " (retrieved on 15 April 2024)",
+          style = "font-size: 0.75em;"
+        )
       ),
       full_screen = TRUE
-    )
+    ),
+    icon = shiny::icon("chart-simple")
   ),
   ## Information ----
   nav_panel(
@@ -176,40 +189,41 @@ ui <- page_navbar(
         nav_panel(
           ### Tools ----
           title = "Tools",
-          p("This dashboard was developed using the R programming language and the Shiny package. The shinylive package was utilized to export this application so it can be run in a web browser without a separate R server. The dashboard layout is structured using bslib. All statistical charts in this dashboard are created using the ggplot2, GGally, and plotly packages.")
+          p("This dashboard was developed using the ", a("R programming language", href = "https://www.r-project.org/", target = "_blank"), " and the ", a("{Shiny}", href = "https://CRAN.R-project.org/package=shiny", target = "_blank"), " package. The ", a("{shinylive}", href = "https://CRAN.R-project.org/package=shinylive", target = "_blank"), " package was utilized to export this application so it can be run in a web browser without a separate R server. The dashboard layout is structured using ", a("{bslib}.", href = "https://CRAN.R-project.org/package=bslib", target = "_blank")),
+          p("The ", a("{network}", href = "https://CRAN.R-project.org/package=network", target = "_blank"), " and ", a("{sna}", href = "https://CRAN.R-project.org/package=sna", target = "_blank"), " packages were used to conduct network analysis [see, ", tooltip(a("Kristanto & Padmi (2020)", href = "https://doi.org/10.21831/pep.v24i2.33912", target = "_blank"), "Using network analysis for rapid, transparent, and rigorous thematic analysis: A case study of online distance learning"), " for a brief introduction on using this method in analyzing textual data]. All statistical charts in this dashboard are created using the ", a("{ggplot2},", href = "https://ggplot2.tidyverse.org", target = "_blank"), " ", a("{GGally},", href = "https://CRAN.R-project.org/package=GGally", target = "_blank"), " and ", a("{plotly}", href = "https://plotly-r.com", target = "_blank"), " packages.")
         ),
         nav_panel(
           ### Developer ----
-          title = "Pengembang",
+          title = "Developer",
           p("The developer and maintainer of this application is ", a("Yosep Dwi Kristanto,", href = "https://people.usd.ac.id/~ydkristanto", target = "_blank"), " a lecturer and researcher in ", a("the Mathematics Education department", href = "https://usd.ac.id/s1pmat", target = "_blank"), " at ", a("Sanata Dharma University,", href = "https://www.usd.ac.id/", target = "_blank"), " Yogyakarta, Indonesia.")
         ),
         nav_panel(
           ### Source Code ----
           title = "Source Code",
-          p("The source code of this application is available on ", a("GitHub repository.", href = "https://github.com/ydkristanto/bib-math-educ", target = "_blank"), " If you would like to report any issues or request additional features for this application, please ", a("create an issue", href = "https://github.com/ydkristanto/bib-math-educ/issues", target = "_blank"), " or, even better, submit a pull request in the repository.")
+          p("The source code of this application is available on ", a("GitHub repository.", href = "https://github.com/ydkristanto/bib-math-educ", target = "_blank"), " If you would like to report any issues or request additional features for this application, please ", a("create an issue", href = "https://github.com/ydkristanto/bib-math-educ/issues", target = "_blank"), " or, even better, submit ", a("a pull request", href = "https://github.com/ydkristanto/bib-math-educ/pulls", target = "_blank"), " in the repository.")
         )
       ),
       ### Data ----
       card(
         card_header("Data"),
         card_body(
-          p("The bibliographic data used in this application was obtained from the Web of Science database. The data was downloaded on 15 April 2024. It contains bibliographic information from scientific articles published in the following journals."),
+          p("The bibliographic data used in this application was obtained from the ", a("Web of Science database", href = "https://www.webofscience.com/wos", target = "_blank"), " (thanks to ", a("Johannes Kepler University,", href = "https://www.jku.at/en", target = "_blank"), " Linz, for providing the access.) The data was downloaded on 15 April 2024. It contains bibliographic information from scientific articles published in the following journals."),
           tags$ul(
-            tags$li("Educational Studies in Mathematics"),
-            tags$li("ZDM - Mathematics Education"),
-            tags$li("Journal for Research in Mathematics Education"),
-            tags$li("International Journal of Science and Mathematics Education"),
-            tags$li("Journal of Mathematics Teacher Education"),
-            tags$li("Mathematical Thinking and Learning"),
-            tags$li("Enseñanza de las Ciencias"),
-            tags$li("Revista Latinoamericana de Investigación en Matemática Educativa - RELIME"),
-            tags$li("Eurasia Journal of Mathematics Science and Technology Education"),
-            tags$li("
-Bolema - Mathematics Education Bulletin")
+            tags$li(a("Educational Studies in Mathematics", href = "https://link.springer.com/journal/10649", target = "_blank")),
+            tags$li(a("ZDM - Mathematics Education", href = "https://link.springer.com/journal/11858", target = "_blank")),
+            tags$li(a("Journal for Research in Mathematics Education", href = "https://pubs.nctm.org/view/journals/jrme/jrme-overview.xml", target = "_blank")),
+            tags$li(a("International Journal of Science and Mathematics Education", href = "https://link.springer.com/journal/10763", target = "_blank")),
+            tags$li(a("Journal of Mathematics Teacher Education", href = "https://link.springer.com/journal/10857", target = "_blank")),
+            tags$li(a("Mathematical Thinking and Learning", href = "https://www.tandfonline.com/journals/hmtl20", target = "_blank")),
+            tags$li(a("Enseñanza de las Ciencias", href = "https://ensciencias.uab.es/", target = "_blank")),
+            tags$li(a("Revista Latinoamericana de Investigación en Matemática Educativa - RELIME", href = "https://www.relime.org/index.php/relime", target = "_blank")),
+            tags$li(a("Eurasia Journal of Mathematics Science and Technology Education", href = "https://www.ejmste.com/", target = "_blank")),
+            tags$li(a("Bolema - Boletim de Educação Matemática", href = "https://www.periodicos.rc.biblioteca.unesp.br/index.php/bolema", target = "_blank"))
           )
         )
       )
-    )
+    ),
+    icon = shiny::icon("circle-info")
   ),
   nav_spacer(),
   ## Nav menu ----
@@ -284,6 +298,7 @@ server <- function(input, output, session) {
     node_count <- input$node_count
     node_labelled <- input$node_labelled
     
+    ### Most relevant authors ----
     if(analysis_input == "Authors") {
       data <- bib_data()$authors %>%
         str_split(";") %>%
@@ -299,11 +314,21 @@ server <- function(input, output, session) {
         ggplot(aes(x = author, y = n)) +
         geom_col(aes(fill = n), show.legend = FALSE) +
         theme_minimal() +
-        theme(axis.title.y = element_blank()) +
-        labs(y = "Document count") +
+        theme(
+          plot.title = element_text(
+            face = "bold",
+            hjust = .5
+          ),
+          axis.title.y = element_blank()
+        ) +
+        labs(
+          title = "Most Relevant Authors",
+          y = "Document count"
+        ) +
         coord_flip()
       plot <- ggplotly(plot0)
     } else if(analysis_input == "Citations count") {
+      ### Most global cited authors ----
       data <- bib_data() %>% 
         separate_longer_delim(authors, delim = ";") %>% 
         group_by(authors) %>% 
@@ -315,13 +340,23 @@ server <- function(input, output, session) {
         ggplot(aes(x = authors, y = citation)) +
         geom_col(aes(fill = citation), show.legend = FALSE) +
         theme_minimal() +
-        theme(axis.title.y = element_blank()) +
-        labs(y = "Citation count") +
+        theme(
+          plot.title = element_text(
+            face = "bold",
+            hjust = .5
+          ),
+          axis.title.y = element_blank()
+        ) +
+        labs(
+          title = "Most Global Cited Authors",
+          y = "Citation count"
+        ) +
         coord_flip()
       plot <- ggplotly(plot0)
     } else if(analysis_input == "Words" && 
               input$chart_words == "Bar chart" &&
               input$field_words == "Keywords") {
+      ### Most frequent words ----
       data <- bib_data() %>%
         select(author_keywords) %>% 
         separate_longer_delim(author_keywords, delim = "; ") %>% 
@@ -335,13 +370,23 @@ server <- function(input, output, session) {
         ggplot(aes(x = author_keywords, y = n)) +
         geom_col(aes(fill = n), show.legend = FALSE) +
         theme_minimal() +
-        theme(axis.title.y = element_blank()) +
-        labs(y = "Count") +
+        theme(
+          plot.title = element_text(
+            face = "bold",
+            hjust = .5
+          ),
+          axis.title.y = element_blank()
+        ) +
+        labs(
+          title = "Most Frequent Words",
+          y = "Count"
+        ) +
         coord_flip()
       plot <- ggplotly(plot0)
     } else if(analysis_input == "Words" && 
               input$chart_words == "Trendline" &&
               input$field_words == "Keywords") {
+      ### Words frequency over time ----
       maxyear <- input$year[2]
       minyear <- maxyear - 10
       
@@ -370,12 +415,23 @@ server <- function(input, output, session) {
         geom_line(aes(group = author_keywords, color = author_keywords)) +
         scale_color_discrete(name = "Author Keyword") +
         theme_minimal() +
-        theme(legend.position = "bottom") +
-        labs(x = "Year", y = "Count")
+        theme(
+          legend.position = "bottom",
+          plot.title = element_text(
+            face = "bold",
+            hjust = .5
+          )
+        ) +
+        labs(
+          title = "Words Frequency Over Time",
+          x = "Year",
+          y = "Count"
+        )
       plot <- ggplotly(plot0)
     } else if(analysis_input == "Words" && 
               input$chart_words == "Bar chart" &&
               input$field_words == "Title") {
+      ### Most frequent words ----
       data <- bib_data() %>%
         select(title) %>% 
         separate_longer_delim(title, delim = " ") %>% 
@@ -389,13 +445,23 @@ server <- function(input, output, session) {
         ggplot(aes(x = title, y = n)) +
         geom_col(aes(fill = n), show.legend = FALSE) +
         theme_minimal() +
-        theme(axis.title.y = element_blank()) +
-        labs(y = "Count") +
+        theme(
+          plot.title = element_text(
+            face = "bold",
+            hjust = .5
+          ),
+          axis.title.y = element_blank()
+        ) +
+        labs(
+          title = "Most Frequent Words",
+          y = "Count"
+        ) +
         coord_flip()
       plot <- ggplotly(plot0)
     } else if(analysis_input == "Words" && 
               input$chart_words == "Trendline" &&
               input$field_words == "Title") {
+      ### Words frequency over time ----
       maxyear <- input$year[2]
       minyear <- maxyear - 10
       data_filter <- bib_data() %>%
@@ -425,13 +491,24 @@ server <- function(input, output, session) {
         geom_line(aes(group = title, color = title)) +
         scale_color_discrete(name = "Word") +
         theme_minimal() +
-        theme(legend.position = "bottom") +
-        labs(x = "Year", y = "Count")
+        theme(
+          plot.title = element_text(
+            face = "bold",
+            hjust = .5
+          ),
+          legend.position = "bottom"
+        ) +
+        labs(
+          title = "Words Frequency Over Time",
+          x = "Year",
+          y = "Count"
+        )
       plot <- ggplotly(plot0)
       
     } else if(analysis_input == "Words" && 
               input$chart_words == "Bar chart" &&
               input$field_words == "Abstract") {
+      ### Most frequent words ----
       data <- bib_data() %>%
         select(abstract) %>% 
         separate_longer_delim(abstract, delim = " ") %>% 
@@ -445,13 +522,23 @@ server <- function(input, output, session) {
         ggplot(aes(x = abstract, y = n)) +
         geom_col(aes(fill = n), show.legend = FALSE) +
         theme_minimal() +
-        theme(axis.title.y = element_blank()) +
-        labs(y = "Count") +
+        theme(
+          plot.title = element_text(
+            face = "bold",
+            hjust = .5
+          ),
+          axis.title.y = element_blank()
+        ) +
+        labs(
+          title = "Most Frequent Words",
+          y = "Count"
+        ) +
         coord_flip()
       plot <- ggplotly(plot0)
     } else if(analysis_input == "Words" && 
               input$chart_words == "Trendline" &&
               input$field_words == "Abstract") {
+      ### Words frequency over time ----
       maxyear <- input$year[2]
       minyear <- maxyear - 10
       data_filter <- bib_data() %>%
@@ -481,10 +568,21 @@ server <- function(input, output, session) {
         geom_line(aes(group = abstract, color = abstract)) +
         scale_color_discrete(name = "Word") +
         theme_minimal() +
-        theme(legend.position = "bottom") +
-        labs(x = "Year", y = "Count")
+        theme(
+          plot.title = element_text(
+            face = "bold",
+            hjust = .5
+          ),
+          legend.position = "bottom"
+        ) +
+        labs(
+          title = "Words Frequency Over Time",
+          x = "Year",
+          y = "Count"
+        )
       plot <- ggplotly(plot0)
     } else if(input$analysis == "Co-occurrence network") {
+      ### Co-occurrence network ----
       # Data preparation
       bib_data <- bib_data()$author_keywords %>%
         str_split("; ") %>%
@@ -580,7 +678,14 @@ server <- function(input, output, session) {
         edge.size = "weight",
         edge.color = "gray",
         edge.alpha = .1
-      )
+      ) +
+        theme(
+          plot.title = element_text(
+            face = "bold",
+            hjust = .5
+          )
+        ) +
+        labs(title = "Co-occurrence Network")
       
       plot <- ggplotly(
         plot0,
@@ -589,6 +694,7 @@ server <- function(input, output, session) {
       ) %>% 
         style(showlegend = FALSE)
     } else if(input$analysis == "Co-authors network") {
+      ### Collaboration network ----
       # Data preparation
       bib_data <- bib_data()$authors %>%
         str_split(";") %>%
@@ -684,7 +790,14 @@ server <- function(input, output, session) {
         edge.size = "weight",
         edge.color = "gray",
         edge.alpha = .1
-      )
+      ) +
+        theme(
+          plot.title = element_text(
+            face = "bold",
+            hjust = .5
+          )
+        ) +
+        labs(title = "Collaboration Network")
       
       plot <- ggplotly(
         plot0,
